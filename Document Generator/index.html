@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Generator - แปลงรูปภาพและเอกสารเป็น PDF</title>
+    
+    <!-- นำเข้า Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- นำเข้า Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- นำเข้า html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+        #pdf-preview-container {
+            width: 100%;
+            max-width: 210mm; /* ขนาด A4 */
+            min-height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="py-10 px-4">
+
+    <div class="max-w-5xl mx-auto">
+        <!-- ส่วนหัวเว็บ -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-center">
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">📄 Document & Image to PDF Generator</h1>
+                <p class="text-blue-100">แปลงข้อความและรูปภาพของคุณให้เป็นไฟล์ PDF ง่ายๆ ในคลิกเดียว</p>
+            </div>
+            
+            <!-- ป้ายชื่อผู้จัดทำ -->
+            <div class="bg-indigo-50 border-b border-indigo-100 py-4 px-6 flex flex-col items-center justify-center">
+                <span class="text-sm text-gray-500 mb-1 uppercase tracking-wider font-semibold">ผู้จัดทำ</span>
+                <div class="text-lg md:text-xl font-bold text-indigo-900 flex flex-col md:flex-row items-center gap-2 md:gap-4">
+                    <span>รัฐภูมิ ทรัพย์มีชัย CE6921</span>
+                    <span class="hidden md:inline text-indigo-300">|</span>
+                    <span>ณัฐพงศ์ อนาวงศ์ CE6921</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ส่วนเครื่องมือ Input -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">📝 เพิ่มข้อความ / เอกสาร</h2>
+                <textarea id="textInput" 
+                    class="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    placeholder="พิมพ์ หรือ วางข้อความเอกสารของคุณที่นี่..."></textarea>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">🖼️ เพิ่มรูปภาพ</h2>
+                <div class="flex items-center justify-center w-full">
+                    <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <span class="text-4xl mb-2">📸</span>
+                            <p class="mb-2 text-sm text-gray-500 font-semibold">คลิกเพื่ออัปโหลดรูปภาพ</p>
+                            <p class="text-xs text-gray-500">PNG, JPG (เลือกได้หลายรูป)</p>
+                        </div>
+                        <input id="imageInput" type="file" class="hidden" accept="image/*" multiple />
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ปุ่มดาวน์โหลด -->
+        <div class="text-center mb-10">
+            <button onclick="generatePDF()" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 text-white font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105 flex items-center justify-center mx-auto text-lg">
+                💾 บันทึกเป็นไฟล์ PDF
+            </button>
+        </div>
+
+        <!-- ตัวอย่างเอกสาร -->
+        <div>
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">👁️ ตัวอย่างเอกสารที่จะถูกสร้าง</h2>
+            <div id="pdf-preview-container" class="p-10 relative">
+                <div class="text-right text-xs text-gray-400 mb-8 border-b pb-2">
+                    เอกสารนี้สร้างโดย: รัฐภูมิ ทรัพย์มีชัย CE6921 และ ณัฐพงศ์ อนาวงศ์ CE6921
+                </div>
+                <div id="preview-text" class="whitespace-pre-wrap text-gray-800 leading-relaxed mb-8"></div>
+                <div id="preview-images" class="flex flex-col items-center gap-6"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const imageInput = document.getElementById('imageInput');
+        const previewText = document.getElementById('preview-text');
+        const previewImages = document.getElementById('preview-images');
+
+        textInput.addEventListener('input', (e) => {
+            previewText.textContent = e.target.value;
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            previewImages.innerHTML = ''; 
+            const files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
+                if (files[i] && files[i].type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        img.className = 'max-w-full h-auto rounded-lg shadow-sm border border-gray-200';
+                        previewImages.appendChild(img);
+                    }
+                    reader.readAsDataURL(files[i]);
+                }
+            }
+        });
+
+        function generatePDF() {
+            const element = document.getElementById('pdf-preview-container');
+            const opt = {
+                margin:       0,
+                filename:     'Document_Generator.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            const btn = document.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ กำลังสร้าง PDF...';
+            btn.disabled = true;
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
