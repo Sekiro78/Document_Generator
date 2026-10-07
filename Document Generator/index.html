@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Generator - แปลงรูปภาพและเอกสารเป็น PDF</title>
+    <title>Document Generator - แปลงรูปภาพ ข้อความ และ Word เป็น PDF</title>
     
     <!-- นำเข้า Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- นำเข้า Google Font -->
+    <!-- นำเข้า Google Font (Sarabun) -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- นำเข้า html2pdf.js -->
+    <!-- นำเข้า html2pdf.js สำหรับสร้าง PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- นำเข้า Mammoth.js สำหรับแปลงไฟล์ Word (.docx) เป็น HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
     <style>
         body {
@@ -27,16 +30,40 @@
             background: white;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        /* สไตล์สำหรับรองรับเนื้อหาจาก Word */
+        .word-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        .word-content th, .word-content td {
+            border: 1px solid #d1d5db;
+            padding: 8px;
+        }
+        .word-content ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .word-content ol {
+            list-style-type: decimal;
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .word-content h1 { font-size: 1.875rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .word-content h2 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .word-content h3 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .word-content p { margin-bottom: 0.5rem; line-height: 1.6; }
     </style>
 </head>
 <body class="py-10 px-4">
 
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <!-- ส่วนหัวเว็บ -->
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-center">
-                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">📄 Document & Image to PDF Generator</h1>
-                <p class="text-blue-100">แปลงข้อความและรูปภาพของคุณให้เป็นไฟล์ PDF ง่ายๆ ในคลิกเดียว</p>
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">📄 Document, Word & Image to PDF Generator</h1>
+                <p class="text-blue-100">แปลงข้อความ เอกสาร Word และรูปภาพของคุณให้เป็นไฟล์ PDF ง่ายๆ ในคลิกเดียว</p>
             </div>
             
             <!-- ป้ายชื่อผู้จัดทำ -->
@@ -51,44 +78,69 @@
         </div>
 
         <!-- ส่วนเครื่องมือ Input -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">📝 เพิ่มข้อความ / เอกสาร</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- 1. เพิ่มข้อความ -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex flex-col">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">📝 1. พิมพ์ข้อความ</h2>
                 <textarea id="textInput" 
-                    class="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    class="w-full h-48 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition text-sm flex-grow"
                     placeholder="พิมพ์ หรือ วางข้อความเอกสารของคุณที่นี่..."></textarea>
             </div>
 
-            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">🖼️ เพิ่มรูปภาพ</h2>
-                <div class="flex items-center justify-center w-full">
-                    <label class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <span class="text-4xl mb-2">📸</span>
-                            <p class="mb-2 text-sm text-gray-500 font-semibold">คลิกเพื่ออัปโหลดรูปภาพ</p>
-                            <p class="text-xs text-gray-500">PNG, JPG (เลือกได้หลายรูป)</p>
-                        </div>
+            <!-- 2. เพิ่มไฟล์ Word -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex flex-col">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">📘 2. อัปโหลด Word (.docx)</h2>
+                <div class="flex items-center justify-center w-full h-48">
+                    <label class="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition p-4 text-center">
+                        <span class="text-4xl mb-2">📄</span>
+                        <p class="mb-1 text-sm text-gray-600 font-semibold">เลือกไฟล์ Word</p>
+                        <p class="text-xs text-gray-400">รองรับไฟล์ .docx</p>
+                        <input id="wordInput" type="file" class="hidden" accept=".docx" />
+                    </label>
+                </div>
+                <!-- แสดงชื่อไฟล์ Word ที่ถูกอัปโหลด -->
+                <div id="wordInfo" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-xs text-blue-800">
+                    <span id="wordFilename" class="truncate font-medium"></span>
+                    <button onclick="removeWordFile()" class="text-red-500 hover:text-red-700 font-bold ml-2">✕ ลบ</button>
+                </div>
+            </div>
+
+            <!-- 3. เพิ่มรูปภาพ -->
+            <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex flex-col">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">🖼️ 3. เพิ่มรูปภาพ</h2>
+                <div class="flex items-center justify-center w-full h-48">
+                    <label class="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition p-4 text-center">
+                        <span class="text-4xl mb-2">📸</span>
+                        <p class="mb-1 text-sm text-gray-600 font-semibold">อัปโหลดรูปภาพ</p>
+                        <p class="text-xs text-gray-400">PNG, JPG (เลือกได้หลายรูป)</p>
                         <input id="imageInput" type="file" class="hidden" accept="image/*" multiple />
                     </label>
                 </div>
             </div>
         </div>
 
-        <!-- ปุ่มดาวน์โหลด -->
+        <!-- ปุ่มดาวน์โหลด PDF -->
         <div class="text-center mb-10">
             <button onclick="generatePDF()" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 text-white font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105 flex items-center justify-center mx-auto text-lg">
                 💾 บันทึกเป็นไฟล์ PDF
             </button>
         </div>
 
-        <!-- ตัวอย่างเอกสาร -->
+        <!-- ตัวอย่างเอกสาร A4 -->
         <div>
             <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">👁️ ตัวอย่างเอกสารที่จะถูกสร้าง</h2>
             <div id="pdf-preview-container" class="p-10 relative">
                 <div class="text-right text-xs text-gray-400 mb-8 border-b pb-2">
                     เอกสารนี้สร้างโดย: รัฐภูมิ ทรัพย์มีชัย CE6921 และ ณัฐพงศ์ อนาวงศ์ CE6921
                 </div>
+                
+                <!-- ส่วนแสดงเนื้อหา Word -->
+                <div id="preview-word" class="word-content text-gray-800 mb-6"></div>
+
+                <!-- ส่วนแสดงข้อความ พิมพ์สด -->
                 <div id="preview-text" class="whitespace-pre-wrap text-gray-800 leading-relaxed mb-8"></div>
+                
+                <!-- ส่วนแสดงรูปภาพ -->
                 <div id="preview-images" class="flex flex-col items-center gap-6"></div>
             </div>
         </div>
@@ -96,14 +148,49 @@
 
     <script>
         const textInput = document.getElementById('textInput');
+        const wordInput = document.getElementById('wordInput');
         const imageInput = document.getElementById('imageInput');
         const previewText = document.getElementById('preview-text');
+        const previewWord = document.getElementById('preview-word');
         const previewImages = document.getElementById('preview-images');
+        const wordInfo = document.getElementById('wordInfo');
+        const wordFilename = document.getElementById('wordFilename');
 
+        // 1. จัดการการพิมพ์ข้อความ
         textInput.addEventListener('input', (e) => {
             previewText.textContent = e.target.value;
         });
 
+        // 2. จัดการการอ่านและแปลงไฟล์ Word (.docx)
+        wordInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                wordFilename.textContent = file.name;
+                wordInfo.classList.remove('hidden');
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const arrayBuffer = event.target.result;
+                    mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+                        .then((result) => {
+                            previewWord.innerHTML = result.value;
+                        })
+                        .catch((err) => {
+                            alert('เกิดข้อผิดพลาดในการแปลงไฟล์ Word: ' + err.message);
+                        });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // ฟังก์ชันยกเลิกไฟล์ Word
+        function removeWordFile() {
+            wordInput.value = '';
+            previewWord.innerHTML = '';
+            wordInfo.classList.add('hidden');
+        }
+
+        // 3. จัดการการอัปโหลดรูปภาพ
         imageInput.addEventListener('change', (e) => {
             previewImages.innerHTML = ''; 
             const files = e.target.files;
@@ -121,6 +208,7 @@
             }
         });
 
+        // 4. ฟังก์ชันส่งออกเอกสารเป็น PDF
         function generatePDF() {
             const element = document.getElementById('pdf-preview-container');
             const opt = {
@@ -137,6 +225,10 @@
             btn.disabled = true;
 
             html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error(err);
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             });
